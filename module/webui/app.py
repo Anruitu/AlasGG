@@ -8,6 +8,9 @@ from datetime import datetime
 from functools import partial
 from typing import Dict, List, Optional
 
+from module.log_res.log_res import LogRes
+from module.config.utils import time_delta
+
 # Import fake module before import pywebio to avoid importing unnecessary module PIL
 from module.webui.fake_pil_module import import_fake_pil_module
 
@@ -97,6 +100,27 @@ patch_executor()
 patch_mimetype()
 task_handler = TaskHandler()
 
+def timedelta_to_text(delta=None):
+    time_delta_name_suffix_dict = {
+        'Y': 'YearsAgo',
+        'M': 'MonthsAgo',
+        'D': 'DaysAgo',
+        'h': 'HoursAgo',
+        'm': 'MinutesAgo',
+        's': 'SecondsAgo',
+    }
+    time_delta_name_prefix = 'Gui.Overview.'
+    time_delta_name_suffix = 'NoData'
+    time_delta_display = ''
+    if isinstance(delta, dict):
+        for _key in delta:
+            if delta[_key]:
+                time_delta_name_suffix = time_delta_name_suffix_dict[_key]
+                time_delta_display = delta[_key]
+                break
+    time_delta_display = str(time_delta_display)
+    time_delta_name = time_delta_name_prefix + time_delta_name_suffix
+    return time_delta_display + t(time_delta_name)
 
 def timedelta_to_text(delta=None):
     time_delta_name_suffix_dict = {
@@ -125,6 +149,8 @@ class AlasGUI(Frame):
     ALAS_MENU: Dict[str, Dict[str, List[str]]]
     ALAS_ARGS: Dict[str, Dict[str, Dict[str, Dict[str, str]]]]
     theme = "default"
+    _log = RichLog
+
     _log = RichLog
 
     def initial(self) -> None:
@@ -537,7 +563,7 @@ class AlasGUI(Frame):
             self.task_handler.add(self.alas_update_dashboard, 10, True)
         self.task_handler.add(log.put_log(self.alas), 0.25, True)
 
-    def set_dashboard_display(self, b = False):
+    def set_dashboard_display(self, b):
         self._log.set_dashboard_display(b)
         self.alas_update_dashboard(True)
 
@@ -577,6 +603,7 @@ class AlasGUI(Frame):
             config_updater: AzurLaneConfig = State.config_updater,
     ) -> None:
         try:
+            skip_time_record = False
             valid = []
             invalid = []
             config = config_updater.read_file(config_name)
@@ -1097,17 +1124,17 @@ class AlasGUI(Frame):
     def dev_utils(self) -> None:
         self.init_menu(name="Utils")
         self.set_title(t("Gui.MenuDevelop.Utils"))
-        put_button(label="Raise exception", onclick=raise_exception)
+        put_button(label=t("Gui.MenuDevelop.RaiseException"), onclick=raise_exception)
 
         def _force_restart():
             if State.restart_event is not None:
-                toast("Alas will restart in 3 seconds", duration=0, color="error")
+                toast(t("Gui.Toast.AlasRestart"), duration=0, color="error")
                 clearup()
                 State.restart_event.set()
             else:
-                toast("Reload not enabled", color="error")
+                toast(t("Gui.Toast.ReloadEnabled"), color="error")
 
-        put_button(label="Force restart", onclick=_force_restart)
+        put_button(label=t("Gui.MenuDevelop.ForceRestart"), onclick=_force_restart)
 
     @use_scope("content", clear=True)
     def dev_remote(self) -> None:
